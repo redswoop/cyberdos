@@ -1,23 +1,59 @@
 {
   "name": "@redswoop/cyberdos",
-  "version": "0.1.0",
-  "description": "CyberDOS: a restrained neon-on-void cyberpunk skin — CSS tokens + effects, nine palettes, zero deps. Source-only; consume from Vite/Metro.",
+  "version": "0.2.0",
+  "description": "CyberDOS: a restrained neon-on-void cyberpunk design language. Core roles + palettes, a CSS/DOM expression, a React Native expression. Source-only, zero runtime deps.",
   "license": "MIT",
   "repository": "github:redswoop/cyberdos",
   "type": "module",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./core/index.ts",
+  "types": "./core/index.ts",
   "exports": {
-    ".": "./index.ts",
-    "./cyber.css": "./cyber.css",
-    "./fx": "./fx.ts",
-    "./palettes": "./palettes.ts"
+    ".": "./core/index.ts",
+    "./core": "./core/index.ts",
+    "./web": "./web/index.ts",
+    "./web/cyber.css": "./web/cyber.css",
+    "./web/fx": "./web/fx.ts",
+    "./web/skin": "./web/skin.ts",
+    "./native": "./native/index.ts",
+    "./native/*": "./native/*"
   },
-  "files": ["index.ts", "fx.ts", "palettes.ts", "cyber.css", "README.md", "LICENSE"],
+  "files": [
+    "core",
+    "web",
+    "native",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@shopify/react-native-skia": ">=1",
+    "react": ">=18",
+    "react-native": ">=0.76",
+    "react-native-reanimated": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    },
+    "react-native-reanimated": {
+      "optional": true
+    },
+    "@shopify/react-native-skia": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "typescript": "^5.9.0"
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.1.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
   }
 }

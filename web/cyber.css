@@ -1,0 +1,325 @@
+/* ==========================================================================
+   CYBERDOS — neon-on-void skin. Opt-in via <html data-theme="cyber">.
+   This file is the skin's primitives only: tokens, the document's own
+   treatment (body, selection, inputs), the overlays (rain, boot, ticker,
+   jack-in/out), keyframes, and a few `cd-` utility classes. It styles no
+   application selector; a host wires its own classes to the tokens and
+   keyframes in an adapter stylesheet of its own.
+   Tokens it expects from the host: --fs (text-size multiplier; falls back
+   to 1). Tokens it re-points for the host: --bg --surface --surface-2
+   --surface-3 --hairline --text --sub --mono.
+   ========================================================================== */
+
+:root[data-theme="cyber"] {
+  /* CP2077-style restraint: one chrome color, one live color, one signal.
+  red    = chrome (titles, rails, brackets, your voice, errors)
+  cyan   = live / interactive (links, selection, working, the agent)
+  yellow = objective marker (needs-you + the one primary action) */
+  --bg: #0b0607;
+  /* maroon-black: a lit room, not a void */
+  --surface: #140b0c;
+  --surface-2: #1f1112;
+  --surface-3: #2b1719;
+  --hairline: color-mix(in srgb, var(--chrome) 16%, transparent);
+  --text: #f1e3d2;
+  /* warm eggshell */
+  --sub: #9b867b;
+  --chrome: #ff6a5c;
+  --live: #5fe3d4;
+  /* teal-cyan: softer, still reads as "live" */
+  --live-ink: #050405;
+  --alarm: #fcee0a;
+  --active: #5ef6ff;
+  --ok: #4b9e96;
+  --muted: #54413f;
+  --signal: #fcee0a;
+  --cut: 10px;
+  --chamfer: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  --slant: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  --display: "Orbitron", "Chakra Petch", system-ui, sans-serif;
+  --body: "Chakra Petch", -apple-system, system-ui, sans-serif;
+  --mono: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --input: "Chakra Petch", -apple-system, system-ui, sans-serif;
+  --grid: color-mix(in srgb, var(--chrome) 3%, transparent);
+  --glow: 0 0 3px color-mix(in srgb, currentColor 70%, transparent), 0 0 14px color-mix(in srgb, currentColor 45%, transparent);
+  --phosphor: 0 0 1px color-mix(in srgb, var(--text) 35%, transparent), 0 0 12px color-mix(in srgb, var(--chrome) 14%, transparent);
+  color-scheme: dark;
+  caret-color: var(--live);
+  --radius: 0px;
+
+  & body {
+    font-family: var(--body);
+    letter-spacing: 0.01em;
+    background:
+      radial-gradient(140% 55% at 50% -10%, color-mix(in srgb, var(--chrome) 22%, transparent), transparent 65%),
+      radial-gradient(90% 50% at 100% 100%, color-mix(in srgb, color-mix(in srgb, var(--chrome), var(--signal)) 8%, transparent), transparent 60%),
+      radial-gradient(70% 40% at 0% 70%, color-mix(in srgb, var(--live) 4%, transparent), transparent 60%),
+      var(--bg);
+  }
+
+  /* CRT scanlines + vignette over everything; never eats a tap */
+  & body::after {
+    content: "";
+    position: fixed; inset: 0; z-index: 999;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.13) 2px 3px),
+      radial-gradient(ellipse at center, transparent 50%, color-mix(in srgb, color-mix(in srgb, var(--bg) 60%, #000) 55%, transparent) 100%);
+    mix-blend-mode: multiply;
+  }
+  & ::selection { background: var(--chrome); color: #000; }
+  & textarea {
+    border-radius: 0;
+    font-family: var(--input); font-weight: 400; letter-spacing: 0;
+    font-size: calc(16px * var(--fs, 1)); /* <16 makes iOS zoom on focus */
+    background: color-mix(in srgb, var(--surface-2) 80%, #000);
+    border-color: color-mix(in srgb, var(--live) 22%, transparent);
+    clip-path: var(--chamfer); --cut: 9px;
+  }
+  & textarea:focus {
+    border-color: var(--live);
+    box-shadow: inset 0 0 14px -4px color-mix(in srgb, var(--live) 50%, transparent);
+  }
+  & textarea::placeholder { color: color-mix(in srgb, var(--sub) 75%, transparent); }
+  & button:active { text-shadow: -2px 0 var(--alarm), 2px 0 var(--live); }
+  & textarea:focus {
+    border-color: color-mix(in srgb, var(--live) 70%, transparent);
+    box-shadow: inset 0 0 18px -4px color-mix(in srgb, var(--live) 40%, transparent);
+  }
+
+  /* host content above the rain canvas (z-index 0); overlays are fixed above both */
+  & body > :not(.cy-rain):not(.cy-boot):not(.theme-boot) { position: relative; z-index: 1; }
+}
+
+/* ---------- utilities: the recurring shapes, for hosts to opt classes into ---------- */
+:root[data-theme="cyber"] {
+  & .cd-display { font-family: var(--display); font-weight: 900; text-transform: uppercase; letter-spacing: 0.14em; color: var(--chrome); text-shadow: var(--glow); }
+  & .cd-hud { font-family: var(--mono); font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; }
+  & .cd-chamfer { border-radius: 0; clip-path: var(--chamfer); }
+  & .cd-slant { border-radius: 0; clip-path: var(--slant); }
+  & .cd-glow { text-shadow: var(--glow); }
+  & .cd-phosphor { text-shadow: var(--phosphor); }
+  & .cd-glass {
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+      color-mix(in srgb, var(--surface) 62%, transparent);
+  }
+  & .cd-brackets { position: relative; }
+  & .cd-brackets::after {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    --b: var(--chrome);
+    background:
+      linear-gradient(var(--b), var(--b)) top left / 16px 2px no-repeat,
+      linear-gradient(var(--b), var(--b)) top left / 2px 16px no-repeat,
+      linear-gradient(var(--b), var(--b)) bottom right / 16px 2px no-repeat,
+      linear-gradient(var(--b), var(--b)) bottom right / 2px 16px no-repeat;
+    filter: drop-shadow(0 0 3px var(--b)) drop-shadow(0 0 10px var(--b));
+  }
+  & .cd-rail { position: relative; }
+  & .cd-rail::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, transparent, color-mix(in srgb, var(--chrome) 25%, #fff), transparent) -60% 0 / 30% 100% no-repeat,
+      color-mix(in srgb, var(--chrome) 70%, transparent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--chrome) 70%, transparent), 0 0 26px color-mix(in srgb, var(--chrome) 45%, transparent);
+    animation: cy-flow 5s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+  }
+  & .cd-tape {
+    background:
+      repeating-linear-gradient(-45deg, color-mix(in srgb, var(--alarm) 14%, transparent) 0 10px, transparent 10px 20px),
+      color-mix(in srgb, var(--alarm) 10%, var(--bg));
+    text-shadow: 0 0 6px var(--alarm);
+  }
+  & .cd-diamond { border-radius: 1px; transform: rotate(45deg) scale(0.85); box-shadow: 0 0 6px currentColor, 0 0 16px color-mix(in srgb, currentColor 55%, transparent); }
+  & .cd-diamond.spin { animation: cy-spin 2.4s linear infinite; }
+  & .cd-diamond.flicker { animation: cy-flicker 2.4s linear infinite; }
+  & .cd-wipe { animation: cy-wipe 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  & .cd-packet { position: relative; overflow: hidden; }
+  & .cd-packet::after {
+    content: "";
+    position: absolute; left: 0; bottom: 0; width: 35%; height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--active), transparent);
+    box-shadow: 0 0 8px var(--active);
+    animation: cy-packet 1.7s linear infinite;
+  }
+  & .cd-sweep { position: relative; overflow: hidden; }
+  & .cd-sweep::after {
+    content: "";
+    position: absolute; inset: 0; width: 60%;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--alarm) 22%, transparent), transparent);
+    animation: cy-packet 2.2s ease-in-out infinite;
+  }
+  & .cd-primary { border-radius: 0; clip-path: var(--slant); background: var(--signal); color: #000; font-family: var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+  & .cd-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--signal) 80%, white); }
+  & .cd-input {
+    border-radius: 0; font-family: var(--input); font-size: calc(16px * var(--fs, 1));
+    border: 1px solid color-mix(in srgb, var(--live) 25%, transparent);
+    background: color-mix(in srgb, var(--surface-2) 80%, #000);
+    color: var(--text);
+  }
+  & .cd-input:focus { border-color: color-mix(in srgb, var(--live) 70%, transparent); box-shadow: inset 0 0 18px -4px color-mix(in srgb, var(--live) 40%, transparent); outline: 0; }
+}
+
+@keyframes cy-glitch {
+  0%, 90%, 100% { text-shadow: var(--glow); transform: none; }
+  91% { text-shadow: -2px 0 var(--live), 2px 0 #fff3; transform: translateX(1px); }
+  92% { text-shadow: 2px 0 var(--live), -1px 0 #fff3; transform: translateX(-2px) skewX(-10deg); }
+  93% { text-shadow: var(--glow); transform: none; }
+  95% { text-shadow: -3px 0 var(--live), 3px 0 transparent; transform: translateX(2px) skewX(6deg); opacity: 0.8; }
+  96% { text-shadow: var(--glow); transform: none; opacity: 1; }
+}
+@keyframes cy-flicker {
+  0%, 38%, 41%, 66%, 69%, 100% { opacity: 1; }
+  39% { opacity: 0.25; }
+  40% { opacity: 0.85; }
+  67% { opacity: 0.45; }
+}
+/* ---------- jack in / jack out overlay (theme.ts bootFlash) ----------
+   unscoped: jacking out has to animate after the cyber tokens are gone */
+.theme-boot {
+  position: fixed; inset: 0; z-index: 1000;
+  pointer-events: none;
+  display: grid; place-items: center;
+  font: 900 calc(18px * var(--fs, 1))/1 "Orbitron", system-ui, sans-serif;
+  letter-spacing: 0.5em; text-indent: 0.5em;
+}
+.theme-boot.cyber {
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.35) 2px 3px),
+    #05050a;
+  color: var(--chrome, #ff5f56);
+  text-shadow: 0 0 12px var(--chrome, #ff5f56);
+  animation: cy-boot 0.95s ease-in both;
+}
+.theme-boot.cyber::after {
+  content: "";
+  position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: var(--chrome, #ff5f56);
+  box-shadow: 0 0 18px 4px var(--chrome, #ff5f56);
+  animation: cy-sweep 0.7s cubic-bezier(0.6, 0, 0.4, 1) both;
+}
+.theme-boot.default {
+  background: #000;
+  color: #9a9aab;
+  font-size: calc(12px * var(--fs, 1));
+  animation: cy-crt-off 0.6s ease-in both;
+}
+@keyframes cy-boot {
+  0% { opacity: 1; }
+  10% { text-shadow: -4px 0 var(--live, #5ef6ff); }
+  20% { text-shadow: 0 0 12px var(--chrome, #ff5f56); }
+  35% { text-shadow: 3px 0 var(--live, #5ef6ff); letter-spacing: 0.7em; }
+  45% { text-shadow: 0 0 12px var(--chrome, #ff5f56); letter-spacing: 0.5em; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes cy-sweep {
+  from { transform: translateY(0); }
+  to { transform: translateY(100dvh); }
+}
+@keyframes cy-crt-off {
+  0% { opacity: 1; transform: none; }
+  40% { opacity: 1; transform: scaleY(0.01) scaleX(1); }
+  70% { opacity: 1; transform: scaleY(0.01) scaleX(0); }
+  100% { opacity: 0; transform: scale(0); }
+}
+/* ==========================================================================
+   PIZZAZZ — motion + light. Everything here is decorative and dies under
+   prefers-reduced-motion via style.css's global rule.
+   ========================================================================== */
+.cy-rain {
+  position: fixed; inset: 0; z-index: 0;
+  width: 100vw; height: 100dvh;
+  pointer-events: none;
+  opacity: 0.4;
+}
+.cy-ticker {
+  flex: 1; min-width: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  font: calc(11px * var(--fs, 1))/1.6 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--chrome);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--chrome) 55%, transparent);
+}
+.cy-ticker-track {
+  display: inline-flex; white-space: nowrap;
+  animation: cy-marquee 30s linear infinite;
+}
+.cy-ticker-track span { padding-right: 18px; }
+.cy-ticker-track span::after { content: "◆"; margin-left: 18px; opacity: 0.5; }
+.cy-ticker-track span.hot { color: var(--alarm); text-shadow: 0 0 8px color-mix(in srgb, var(--alarm) 60%, transparent); animation: cy-flicker 2.4s linear infinite; }
+/* boot log (cyber-fx.ts bootLog) */
+.cy-boot {
+  position: fixed; inset: 0; z-index: 1001;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.35) 2px 3px),
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--bg, #0b0607), var(--chrome, #ff5f56) 8%), color-mix(in srgb, var(--bg, #0b0607) 70%, #000) 70%);
+  transition: opacity 0.4s, filter 0.4s;
+}
+.cy-boot.out { opacity: 0; filter: blur(4px) brightness(2); }
+.cy-boot pre {
+  margin: 0; max-width: 100%;
+  font: calc(13px * var(--fs, 1))/1.7 "Share Tech Mono", ui-monospace, monospace;
+  color: var(--text, #ece3d6);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--chrome) 45%, transparent);
+  white-space: pre-wrap;
+}
+.cy-boot pre div { animation: cy-wipe 0.25s backwards; }
+.cy-boot pre div:first-child { color: var(--chrome, #ff5f56); text-shadow: 0 0 8px var(--chrome, #ff5f56); margin-bottom: 6px; }
+.cy-boot pre div.last {
+  margin-top: 14px;
+  font: 900 calc(20px * var(--fs, 1))/1.2 "Orbitron", system-ui, sans-serif;
+  letter-spacing: 0.16em;
+  color: var(--signal, #fcee0a);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--signal, #fcee0a) 60%, transparent), 2px 0 var(--live, #5ef6ff);
+}
+@keyframes cy-flow {
+  0% { background-position: -60% 0, 0 0; }
+  60%, 100% { background-position: 160% 0, 0 0; }
+}
+@keyframes cy-wipe {
+  from { clip-path: inset(0 100% 0 0); opacity: 0.4; }
+  to { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+@keyframes cy-packet {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+@keyframes cy-spin {
+  from { transform: rotate(45deg) scale(0.85); }
+  to { transform: rotate(405deg) scale(0.85); }
+}
+@keyframes cy-beacon {
+  0%, 100% { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--signal) 50%, transparent)); }
+  50% { filter: drop-shadow(0 0 16px var(--signal)); }
+}
+@keyframes cy-marquee { to { transform: translateX(-50%); } }
+@keyframes cy-neon-on {
+  0% { opacity: 0.08; }
+  8% { opacity: 1; }
+  12% { opacity: 0.15; }
+  22% { opacity: 1; }
+  26% { opacity: 0.3; }
+  30%, 55% { opacity: 1; }
+  58% { opacity: 0.5; }
+  62%, 100% { opacity: 1; }
+}
+@keyframes cy-edge {
+  0%, 100% { box-shadow: -4px 0 14px -6px var(--chrome); }
+  50% { box-shadow: -4px 0 24px -2px var(--chrome); }
+}
+
+/* every decoration dies under reduced motion (a host may already say so; harmless twice) */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="cyber"] *, :root[data-theme="cyber"] *::before, :root[data-theme="cyber"] *::after { animation: none !important; transition: none !important; }
+}

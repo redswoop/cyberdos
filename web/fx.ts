@@ -1,17 +1,32 @@
-/* Cyber theme effects that CSS can't do alone: digital rain behind the HUD,
+/* Cyber effects CSS can't do alone: digital rain behind the page, a
    decrypt-scramble on titles as they mount, and the boot log. All of it is
    decoration — pointer-events none, paused when hidden, off under
    prefers-reduced-motion, and torn down completely on jack-out. */
+import { GLYPHS, NOISE, bootLines, pick, SHORT_BOOT, type BootLinesOptions } from '../core/lines';
+import { rainColors, type Derived } from '../core/derive';
+import { DEFAULT_PALETTE } from '../core/palettes';
 
-const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+export interface FxOptions {
+  /** CSS selector list for elements that decrypt on mount; '' disables */
+  scramble?: string;
+  /** canvas rain behind the page (default on) */
+  rain?: boolean;
+}
+
+/** headings that scramble by default: a host passes its own list */
+export const DEFAULT_SCRAMBLE = 'h1, h2, .cd-display';
 
 let rain: { stop: () => void } | null = null;
 let observer: MutationObserver | null = null;
+let options: Required<FxOptions> = { scramble: DEFAULT_SCRAMBLE, rain: true };
 
-export function startCyberFx() {
+export function startCyberFx(o: FxOptions = {}) {
+  options = { ...options, ...o };
   if (reduced()) return;
-  if (!rain) rain = startRain();
-  if (!observer) observer = startScramble();
+  if (options.rain && !rain) rain = startRain();
+  if (options.scramble && !observer) observer = startScramble(options.scramble);
 }
 
 export function stopCyberFx() {
@@ -23,22 +38,19 @@ export function stopCyberFx() {
 
 /* ---------------- digital rain ---------------- */
 
-const GLYPHS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜ0123456789ABCDEF<>/\\=+*';
-const pick = (s: string) => s[(Math.random() * s.length) | 0];
-
-/** follows the user's palette (prefs.ts); streams are the primary, rare
- *  "hot" ones lean amber */
-let palette = { stream: '#ff6a5c', head: '#ffd9d0', hot: '#ffb070', hotHead: '#ffe6c8' };
+let palette = rainColors(DEFAULT_PALETTE.colors);
+/** follow the live palette: see core `rainColors` */
 export function setRainColors(p: typeof palette) {
   palette = p;
 }
 
-function startRain() {
+function startRain(): { stop: () => void } | null {
   const c = document.createElement('canvas');
+  const g = c.getContext('2d');
+  if (!g) return null; // no 2d canvas here (jsdom, exotic browsers): no rain
   c.className = 'cy-rain';
   c.setAttribute('aria-hidden', 'true');
   document.body.prepend(c);
-  const g = c.getContext('2d')!;
   const COL = 18;
   let drops: { y: number; speed: number; hot: boolean }[] = [];
   const size = () => {
@@ -95,13 +107,11 @@ function startRain() {
 
 /* ---------------- decrypt scramble ---------------- */
 
-const SCRAMBLE_SEL = '.bar h1, .agent-name, .session .title, .ov-card-title, .modal-head h2, .group-title, .nc-where-name';
-const NOISE = '!<>-_\\/[]{}=+*^?#01ｱｲｳｴｵ';
 const seen = new WeakSet<Element>();
 
-function startScramble() {
+function startScramble(sel: string) {
   const scan = (root: ParentNode) => {
-    root.querySelectorAll(SCRAMBLE_SEL).forEach((el) => {
+    root.querySelectorAll(sel).forEach((el) => {
       if (seen.has(el)) return;
       seen.add(el);
       scramble(el);
@@ -113,7 +123,7 @@ function startScramble() {
       m.addedNodes.forEach((n) => {
         if (n.nodeType !== 1) return;
         const el = n as Element;
-        if (el.matches(SCRAMBLE_SEL)) {
+        if (el.matches(sel)) {
           if (!seen.has(el)) {
             seen.add(el);
             scramble(el);
@@ -126,7 +136,7 @@ function startScramble() {
   return mo;
 }
 
-/** decode each text node from noise to its real text. React owns these
+/** decode each text node from noise to its real text. A framework owns these
  *  nodes, so if it writes mid-animation we notice and stand down. */
 export function scramble(el: Element, ms = 650) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -139,7 +149,7 @@ export function scramble(el: Element, ms = 650) {
     let written = final;
     const t0 = performance.now();
     const step = (t: number) => {
-      if (node.data !== written) return; // React re-rendered it — theirs now
+      if (node.data !== written) return; // re-rendered under us — theirs now
       const e = t - t0;
       if (e >= ms) {
         node.data = written = final;
@@ -155,20 +165,16 @@ export function scramble(el: Element, ms = 650) {
 
 /* ---------------- boot log ---------------- */
 
-export function bootLog({ short = false } = {}) {
+export interface BootLogOptions extends BootLinesOptions {
+  /** the three-line version played on a user toggle */
+  short?: boolean;
+  /** override every line (ignores title/host/steps/last) */
+  lines?: string[];
+}
+
+export function bootLog({ short = false, lines, ...brand }: BootLogOptions = {}) {
   if (reduced()) return;
-  const h = location.hostname || 'localhost';
-  const host = /^[\d.]+$/.test(h) ? h : `${h.split('.')[0]}.tailnet`;
-  const lines = short
-    ? ['> neural link .......... OK', '> ICE .................. BYPASSED', 'JACKED IN']
-    : [
-        'HERDR//OS 20.77 — NETRUNNER EDITION',
-        `> handshake ${host} .... OK`,
-        '> decrypting roster ........... OK',
-        '> ICE countermeasures ......... BYPASSED',
-        '> waking the herd ............. 🐑',
-        'WELCOME BACK, RUNNER',
-      ];
+  const text = lines ?? (short ? SHORT_BOOT : bootLines(brand));
   const el = document.createElement('div');
   el.className = 'cy-boot';
   el.setAttribute('aria-hidden', 'true');
@@ -183,17 +189,20 @@ export function bootLog({ short = false } = {}) {
   let li = 0;
   const per = short ? 130 : 170;
   const tick = () => {
-    if (li >= lines.length) {
+    if (li >= text.length) {
       setTimeout(done, short ? 250 : 450);
       return;
     }
-    const line = lines[li++];
+    const line = text[li++];
     const div = document.createElement('div');
-    if (li === lines.length) div.className = 'last';
+    if (li === text.length) div.className = 'last';
     pre.appendChild(div);
     div.textContent = line;
     scramble(div, per * 1.6);
     setTimeout(tick, per);
   };
   tick();
+  return el;
 }
+
+export type { Derived };
