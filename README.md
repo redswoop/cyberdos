@@ -1,7 +1,7 @@
-# Preem
+# CyberDOS
 
 A restrained neon-on-void cyberpunk skin, lifted out of [herdr-web](https://github.com/redswoop/herdr-web)
-so it can be reused. "Preem" is Night City slang for *premium* — the good chrome.
+so it can be reused: a design language with (eventually) an HTML/CSS expression and a React Native one.
 
 Three pieces, zero runtime dependencies, no build step (ship as TypeScript + CSS and let
 your bundler eat it):
@@ -31,13 +31,13 @@ cyberpunk and starts reading as a rave.
 ## Consuming it
 
 ```sh
-npm i github:redswoop/preem
+npm i github:redswoop/cyberdos
 ```
 
 ```ts
-import '@redswoop/preem/cyber.css';
-import { startCyberFx, stopCyberFx, bootLog, setRainColors } from '@redswoop/preem/fx';
-import { palettesFor, findPalette } from '@redswoop/preem/palettes';
+import '@redswoop/cyberdos/cyber.css';
+import { startCyberFx, stopCyberFx, bootLog, setRainColors } from '@redswoop/cyberdos/fx';
+import { palettesFor, findPalette } from '@redswoop/cyberdos/palettes';
 
 document.documentElement.dataset.theme = 'cyber';   // the skin is keyed on <html data-theme="cyber">
 startCyberFx();                                      // rain + scramble observer
