@@ -1,0 +1,23 @@
+{
+  "name": "@redswoop/preem",
+  "version": "0.1.0",
+  "description": "Preem: a restrained neon-on-void cyberpunk skin — CSS tokens + effects, nine palettes, zero deps. Source-only; consume from Vite/Metro.",
+  "license": "MIT",
+  "repository": "github:redswoop/preem",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./cyber.css": "./cyber.css",
+    "./fx": "./fx.ts",
+    "./palettes": "./palettes.ts"
+  },
+  "files": ["index.ts", "fx.ts", "palettes.ts", "cyber.css", "README.md", "LICENSE"],
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}
