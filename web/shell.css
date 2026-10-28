@@ -1,0 +1,334 @@
+/* ==========================================================================
+   CYBERDOS SHELL — the frame of a tool-like app. A full-bleed stage (the
+   content: a render, a canvas, a map) with everything else floating over it:
+   slots of panels at either edge, and rails of labelled entries between the
+   slots and the stage. Rails are grouped top / middle / bottom; a group sits
+   on a tray, can fold to bare tiles, and swaps its entries with context.
+   Layout works without the skin (tokens fall back to a quiet dark);
+   [data-theme="cyber"] adds the trays' plate, the rail line, the CRT and
+   motion. Tokens sit on :root so a tray (a popover in <body>) keeps them.
+   The stage is content: no scanline, glow or rain is drawn over it.
+   shell.ts is the JS half (rails, trays, foldable panels, slot grips).
+   ========================================================================== */
+
+:root {
+  --cd-tile: calc(40px * var(--fs, 1));
+  --cd-gap: 8px;
+  --cd-edge: 10px;
+  --cd-ink: var(--text, #e4e6eb);
+  --cd-ink-2: color-mix(in srgb, var(--text, #e4e6eb) 74%, var(--bg, #14161a));
+  --cd-plate: color-mix(in srgb, var(--surface, #1c1f25) 88%, transparent);
+  --cd-tile-bg: var(--surface-2, #262a31);
+  --cd-tile-hi: var(--surface-3, #30353e);
+  --cd-line: var(--hairline, #2f343d);
+  --cd-on: var(--live, #6ea8fe);
+  --cd-radius: 8px;
+}
+.cd-shell {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  color: var(--cd-ink);
+}
+
+.cd-stage { position: absolute; inset: 0; }
+
+/* the floating layer: slot | rail | center | rail | slot. It lets the stage
+   take every click that lands on empty space. */
+.cd-frame {
+  position: absolute; inset: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "lslot lrail center rrail rslot";
+  gap: var(--cd-gap);
+  padding: var(--cd-edge);
+  pointer-events: none;
+}
+.cd-center { grid-area: center; position: relative; min-width: 0; }
+.cd-center > * { pointer-events: auto; }
+
+/* ---------- slots and panels ---------- */
+.cd-slot {
+  position: relative;
+  display: flex; flex-direction: column; gap: var(--cd-gap);
+  width: var(--cd-slot-w, calc(280px * (0.4 + 0.6 * var(--fs, 1))));
+  min-height: 0;
+  pointer-events: auto;
+}
+.cd-slot[data-side="left"] { grid-area: lslot; }
+.cd-slot[data-side="right"] { grid-area: rslot; }
+.cd-slot[hidden] { display: none; }
+.cd-grip {
+  position: absolute; top: 0; bottom: 0; width: 8px;
+  cursor: ew-resize; touch-action: none;
+}
+.cd-slot[data-side="left"] > .cd-grip { right: -6px; }
+.cd-slot[data-side="right"] > .cd-grip { left: -6px; }
+
+.cd-panel {
+  position: relative;
+  display: flex; flex-direction: column;
+  flex: 1 1 auto; min-height: 0;
+  background: var(--cd-plate);
+  border: 1px solid var(--cd-line);
+  border-radius: calc(var(--cd-radius) + 2px);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+.cd-panel[data-collapsed] { flex: none; }
+.cd-panel[data-collapsed] > :not(.cd-panel-head) { display: none; }
+.cd-panel-head {
+  flex: none;
+  display: flex; align-items: center; gap: 8px;
+  min-height: calc(36px * var(--fs, 1));
+  padding: 6px 10px 6px 12px;
+  font: 600 calc(14px * var(--fs, 1))/1.2 var(--body, system-ui, sans-serif);
+  cursor: default; user-select: none;
+}
+.cd-panel-title { flex: 1 0 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cd-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 8px 8px; }
+.cd-panel-foot {
+  flex: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px 8px 12px;
+  border-top: 1px solid var(--cd-line);
+  font: calc(12px * var(--fs, 1))/1.3 var(--body, system-ui, sans-serif);
+  color: var(--cd-ink-2);
+}
+
+/* ---------- rails ---------- */
+.cd-toolrail {
+  display: flex; flex-direction: column;
+  min-height: 0;
+  pointer-events: none;
+}
+.cd-toolrail[data-side="left"] { grid-area: lrail; align-items: flex-start; }
+.cd-toolrail[data-side="right"] { grid-area: rrail; align-items: flex-end; }
+.cd-zone { display: flex; flex-direction: column; gap: 14px; align-items: inherit; }
+.cd-zone[data-anchor="middle"] { flex: 1; justify-content: center; padding-block: 14px; }
+
+.cd-group {
+  position: relative;
+  display: flex; flex-direction: column; gap: 4px;
+  align-items: inherit;
+  padding: 4px 0;
+}
+/* the tray: a plate behind the tiles only; labels float beside it */
+.cd-group::before {
+  content: "";
+  position: absolute; top: 0; bottom: 0;
+  width: calc(var(--cd-tile) + 8px);
+  background: var(--cd-plate);
+  border: 1px solid var(--cd-line);
+  border-radius: calc(var(--cd-radius) + 2px);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+.cd-toolrail[data-side="left"] .cd-group::before { left: 0; }
+.cd-toolrail[data-side="right"] .cd-group::before { right: 0; }
+.cd-group:empty { display: none; }
+
+/* the fold handle under a group: a short bar, folds the labels away */
+.cd-handle {
+  pointer-events: auto;
+  width: calc(var(--cd-tile) + 8px); height: 12px;
+  padding: 0; border: 0; background: none; cursor: pointer;
+  position: relative; margin-top: -8px;
+}
+.cd-handle::before {
+  content: "";
+  position: absolute; left: 50%; top: 50%; width: 20px; height: 2px;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background: var(--cd-ink-2);
+  opacity: 0.5;
+  transition: opacity 0.12s, width 0.12s;
+}
+.cd-handle:hover::before { opacity: 1; width: 28px; }
+
+/* ---------- entries: tile + label pill ---------- */
+.cd-entry {
+  pointer-events: auto;
+  position: relative;
+  display: flex; align-items: center; gap: 6px;
+  margin: 0; padding: 0 4px;
+  border: 0; background: none;
+  color: var(--cd-ink);
+  font: inherit; text-align: start;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cd-toolrail[data-side="right"] .cd-entry { flex-direction: row-reverse; text-align: end; }
+.cd-entry:focus-visible { outline: none; }
+.cd-entry-tile {
+  position: relative;
+  flex: none;
+  display: grid; place-items: center;
+  width: var(--cd-tile); height: var(--cd-tile);
+  border-radius: var(--cd-radius);
+  background: var(--cd-tile-bg);
+  color: var(--cd-ink);
+  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+}
+.cd-entry-tile > svg { width: 52%; height: 52%; stroke-width: 1.75; }
+.cd-entry-tile > .cd-glyph { font: 600 calc(15px * var(--fs, 1))/1 var(--body, system-ui, sans-serif); }
+.cd-entry:hover .cd-entry-tile { background: var(--cd-tile-hi); }
+.cd-entry:focus-visible .cd-entry-tile { box-shadow: 0 0 0 2px var(--cd-on); }
+.cd-entry[aria-pressed="true"] .cd-entry-tile,
+.cd-entry[aria-expanded="true"] .cd-entry-tile {
+  background: color-mix(in srgb, var(--cd-on) 22%, var(--cd-tile-bg));
+  color: var(--cd-on);
+}
+/* "more": a corner mark, it opens something */
+.cd-entry-tile[data-more]::after {
+  content: "";
+  position: absolute; right: 3px; bottom: 3px;
+  border: 3px solid transparent;
+  border-right-color: currentColor; border-bottom-color: currentColor;
+  opacity: 0.7;
+}
+
+.cd-entry-label {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 5px 9px;
+  border-radius: calc(var(--cd-radius) - 2px);
+  background: var(--cd-plate);
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+  transition: opacity 0.14s, transform 0.14s;
+}
+.cd-entry-head { display: flex; align-items: center; gap: 6px; }
+.cd-toolrail[data-side="right"] .cd-entry-head { flex-direction: row-reverse; }
+.cd-entry-name { font: 600 calc(14px * var(--fs, 1))/1.2 var(--body, system-ui, sans-serif); }
+.cd-entry-state { font: 500 calc(12px * var(--fs, 1))/1.2 var(--body, system-ui, sans-serif); color: var(--cd-ink-2); }
+.cd-entry[aria-pressed="true"] .cd-entry-state { color: var(--cd-on); }
+.cd-entry-keys { display: inline-flex; gap: 2px; }
+.cd-entry-keys kbd {
+  min-width: 1.5em;
+  padding: 1px 4px;
+  border: 1px solid var(--cd-line);
+  border-radius: 3px;
+  font: calc(12px * var(--fs, 1))/1.2 var(--mono, ui-monospace, monospace);
+  text-align: center;
+  color: var(--cd-ink-2);
+}
+
+/* a folded group shows bare tiles; a label comes out on hover or focus */
+.cd-group[data-compact] .cd-entry-label {
+  position: absolute; top: 50%;
+  opacity: 0; pointer-events: none;
+}
+.cd-toolrail[data-side="left"] .cd-group[data-compact] .cd-entry-label { left: calc(var(--cd-tile) + 14px); transform: translate(-6px, -50%); }
+.cd-toolrail[data-side="right"] .cd-group[data-compact] .cd-entry-label { right: calc(var(--cd-tile) + 14px); transform: translate(6px, -50%); }
+.cd-group[data-compact] .cd-entry:is(:hover, :focus-visible) .cd-entry-label { opacity: 1; transform: translate(0, -50%); }
+
+/* a group swapping its entries: the old ones fall back, the new ones slide out of the tray */
+.cd-entry.cd-out { animation: cd-entry-out 0.11s ease-in forwards; pointer-events: none; }
+.cd-entry.cd-in { animation: cd-entry-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 28ms); }
+.cd-toolrail[data-side="right"] .cd-entry { --dx: 10px; }
+@keyframes cd-entry-in { from { opacity: 0; transform: translateX(var(--dx, -10px)); } }
+@keyframes cd-entry-out { to { opacity: 0; transform: translateX(var(--dx, -10px)); } }
+
+/* ---------- trays: an entry's options, beside it (a popover, placed by shell.ts) ---------- */
+.cd-tray {
+  position: fixed; inset: auto; margin: 0;
+  min-width: 220px; max-width: min(360px, 90vw);
+  max-height: calc(100dvh - 20px); overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--cd-line);
+  border-radius: calc(var(--cd-radius) + 2px);
+  background: var(--cd-plate);
+  backdrop-filter: blur(12px);
+  color: var(--cd-ink);
+  font: calc(13px * var(--fs, 1))/1.4 var(--body, system-ui, sans-serif);
+}
+.cd-tray:not(:popover-open):not([data-open]) { display: none; }
+.cd-tray-title { margin: 0 0 8px; font: 600 calc(12px * var(--fs, 1))/1.2 var(--body, system-ui, sans-serif); color: var(--cd-ink-2); text-transform: uppercase; letter-spacing: 0.08em; }
+.cd-tray .cd-group::before { display: none; }
+.cd-tray .cd-group { align-items: stretch; padding: 0; }
+.cd-tray .cd-entry-label { background: none; backdrop-filter: none; padding-inline: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.cd-shell, .cd-tray) *, :is(.cd-shell, .cd-tray) *::before, :is(.cd-shell, .cd-tray) *::after { animation: none !important; transition: none !important; }
+}
+
+/* ==========================================================================
+   the skin: plates go chamfered and scanlined, the rail line lights the tray's
+   outer edge, labels hang off a chrome tick. Never on .cd-stage.
+   ========================================================================== */
+:root[data-theme="cyber"] {
+  & {
+    --cd-radius: 0px;
+    --cd-plate: color-mix(in srgb, var(--surface) 86%, transparent);
+    --cd-tile-bg: color-mix(in srgb, var(--surface-2) 92%, transparent);
+    --cd-tile-hi: color-mix(in srgb, var(--live) 12%, var(--surface-2));
+    --cd-line: color-mix(in srgb, var(--chrome) 22%, transparent);
+  }
+  & .cd-panel, & .cd-group::before, & .cd-tray {
+    background:
+      var(--crt),
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+      var(--cd-plate);
+    clip-path: var(--chamfer);
+  }
+  & .cd-panel { --cut: 12px; }
+  & .cd-group::before { --cut: 8px; }
+  & .cd-tray { --cut: 10px; }
+
+  /* the rail line: the tray's outer edge, lit */
+  & .cd-group::after {
+    content: "";
+    position: absolute; top: 10px; bottom: 10px; width: 2px;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--chrome) 75%, transparent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--chrome) 70%, transparent), 0 0 18px color-mix(in srgb, var(--chrome) 40%, transparent);
+  }
+  & .cd-toolrail[data-side="left"] .cd-group::after { left: -1px; }
+  & .cd-toolrail[data-side="right"] .cd-group::after { right: -1px; }
+  & .cd-tray .cd-group::after { display: none; }
+  & .cd-group.cd-swapping::after { animation: cy-neon-on 0.5s steps(1) both; }
+
+  & .cd-entry-tile {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+  }
+  & .cd-entry-tile[data-more]::after { right: 6px; bottom: 6px; }
+  & .cd-entry:hover .cd-entry-tile { color: var(--live); }
+  & .cd-entry[aria-pressed="true"] .cd-entry-tile,
+  & .cd-entry[aria-expanded="true"] .cd-entry-tile {
+    background: color-mix(in srgb, var(--live) 20%, var(--surface-2));
+    box-shadow: inset 0 0 14px -4px var(--live);
+  }
+  & .cd-entry[aria-pressed="true"] .cd-entry-tile > svg { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--live) 70%, transparent)); }
+  & .cd-entry:focus-visible .cd-entry-tile { box-shadow: inset 0 0 0 2px var(--live); }
+
+  /* label pill: square, one cut corner, hung off a chrome tick */
+  & .cd-entry-label {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+    border-left: 2px solid color-mix(in srgb, var(--chrome) 60%, transparent);
+  }
+  & .cd-toolrail[data-side="right"] .cd-entry-label {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    border-left: 0; border-right: 2px solid color-mix(in srgb, var(--chrome) 60%, transparent);
+  }
+  & .cd-entry:hover .cd-entry-label { border-color: var(--live); }
+  & .cd-entry[aria-pressed="true"] .cd-entry-label { border-color: var(--live); }
+  & .cd-tray .cd-entry-label { border: 0; clip-path: none; }
+  & .cd-entry-name { letter-spacing: 0.02em; }
+  & .cd-entry-keys kbd { border-radius: 0; color: color-mix(in srgb, var(--chrome) 55%, var(--text)); }
+
+  & .cd-handle::before { border-radius: 0; background: var(--chrome); opacity: 0.45; box-shadow: 0 0 6px var(--chrome); }
+  & .cd-handle:hover::before { opacity: 1; }
+
+  & .cd-panel-head {
+    font: 700 calc(12px * var(--fs, 1))/1.2 var(--display);
+    text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--chrome);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--chrome) 45%, transparent);
+    border-bottom: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--chrome), transparent 80%) 1;
+  }
+  & .cd-panel-head :is(button, input, select) { font-family: var(--body); letter-spacing: 0; text-transform: none; text-shadow: none; }
+  & .cd-panel-foot { border-top-color: color-mix(in srgb, var(--chrome) 18%, transparent); }
+  & .cd-tray-title { font-family: var(--mono); letter-spacing: 0.14em; color: var(--chrome); }
+}

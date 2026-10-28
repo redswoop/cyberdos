@@ -43,3 +43,30 @@ describe('cyber.css', () => {
     expect(css).toContain('prefers-reduced-motion: reduce');
   });
 });
+
+const shell = readFileSync(new URL('../../web/shell.css', import.meta.url), 'utf8');
+const shellCode = shell.replace(/\/\*[\s\S]*?\*\//g, '');
+
+describe('shell.css', () => {
+  it('styles only its own classes', () => {
+    const states = /^\.(cd-in|cd-out|cd-swapping)$/;
+    for (const c of new Set(shellCode.match(/\.[a-zA-Z][\w-]*/g))) if (!states.test(c)) expect(c, c).toMatch(/^\.cd-/);
+    expect(shellCode).not.toMatch(/#[a-z][\w-]*\s*[{,]/i);
+  });
+  it('keeps the stage free of decoration', () => {
+    expect(shellCode).not.toMatch(/\.cd-stage[^{]*\{[^}]*(--crt|--glow|text-shadow|animation)/);
+    // the page-wide CRT overlay stands down when a shell is on the page
+    expect(code).toMatch(/body:has\(\.cd-shell\)::after\s*\{\s*display:\s*none/);
+  });
+  it('puts no text under 12px', () => {
+    for (const m of shellCode.matchAll(/calc\((\d+(?:\.\d+)?)px \* var\(--fs, 1\)\)/g)) {
+      const px = +m[1];
+      const ctx = shellCode.slice(Math.max(0, m.index! - 40), m.index!);
+      if (/font/.test(ctx)) expect(px, ctx).toBeGreaterThanOrEqual(12);
+    }
+  });
+  it('needs no host text-size token and dies under reduced motion', () => {
+    expect(shellCode).not.toMatch(/var\(--fs\)/);
+    expect(shell).toContain('prefers-reduced-motion: reduce');
+  });
+});

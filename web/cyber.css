@@ -46,6 +46,8 @@
   color-scheme: dark;
   caret-color: var(--live);
   --radius: 0px;
+  /* CRT scanlines as a background layer, for chrome that wants them on itself */
+  --crt: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.13) 2px 3px);
 
   & body {
     font-family: var(--body);
@@ -57,16 +59,19 @@
       var(--bg);
   }
 
-  /* CRT scanlines + vignette over everything; never eats a tap */
+  /* CRT scanlines + vignette over everything; never eats a tap. A page built
+     on the shell (shell.css) has a stage of content, so there the scanlines
+     go on the chrome instead and this overlay stands down. */
   & body::after {
     content: "";
     position: fixed; inset: 0; z-index: 999;
     pointer-events: none;
     background:
-      repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.13) 2px 3px),
+      var(--crt),
       radial-gradient(ellipse at center, transparent 50%, color-mix(in srgb, color-mix(in srgb, var(--bg) 60%, #000) 55%, transparent) 100%);
     mix-blend-mode: multiply;
   }
+  & body:has(.cd-shell)::after { display: none; }
   & ::selection { background: var(--chrome); color: #000; }
   & textarea {
     border-radius: 0;
