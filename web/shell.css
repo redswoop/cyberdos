@@ -85,7 +85,7 @@
   font: 600 calc(14px * var(--fs, 1))/1.2 var(--body, system-ui, sans-serif);
   cursor: default; user-select: none;
 }
-.cd-panel-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cd-panel-title { flex: 1 0 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cd-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 8px 8px; }
 .cd-panel-foot {
   flex: none;

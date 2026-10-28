@@ -157,10 +157,14 @@ export class Entry {
       if ((e as ToggleEvent).newState === 'open') this.fill(t);
     });
     t.addEventListener('toggle', (e) => {
-      const open = (e as ToggleEvent).newState === 'open';
-      if (open) placeTray(t, this.el, this.side);
-      this.el.setAttribute('aria-expanded', String(open));
+      this.el.setAttribute('aria-expanded', String((e as ToggleEvent).newState === 'open'));
     });
+    // placed when it gets a size (opening, or its content changing): a resize observer runs after
+    // layout and before paint, so the tray never shows a frame at the wrong spot ('toggle' comes too late)
+    if (typeof ResizeObserver === 'function')
+      new ResizeObserver(() => {
+        if (this.isOpen()) placeTray(t, this.el, this.side);
+      }).observe(t);
     document.body.append(t);
     if (popovers()) this.el.popoverTargetElement = t;
     return t;
