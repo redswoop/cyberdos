@@ -14,6 +14,8 @@
     "./web/cyber.css": "./web/cyber.css",
     "./web/fx": "./web/fx.ts",
     "./web/skin": "./web/skin.ts",
+    "./web/shell": "./web/shell.ts",
+    "./web/shell.css": "./web/shell.css",
     "./native": "./native/index.ts",
     "./native/*": "./native/*"
   },
